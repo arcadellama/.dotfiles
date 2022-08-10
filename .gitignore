@@ -8,3 +8,4 @@ bash/.bash_history
 mutt/.mutt/cache
 .netrwhist
 .bw-session
+.secret/

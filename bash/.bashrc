@@ -5,8 +5,8 @@ export PATH="/usr/local/sbin:/usr/sbin:/sbin:$PATH"
 export PATH="$PATH:$HOME/.local/bin"
 
 # Import Bitwarden CLI Session Key
-if [ -r $HOME/.bw-session ]; then
-    . $HOME/.bw-session
+if [ -r $HOME/.secret/.bw-session ]; then
+    . $HOME/.secret/.bw-session
 fi
 
 # macOS Environment
