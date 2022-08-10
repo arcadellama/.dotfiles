@@ -7,8 +7,8 @@ AuthMechs LOGIN
 SSLType IMAPS
 
 MaildirStore posteoMaildir
-Path ~/mail/posteo/
-Inbox ~/mail/posteo/INBOX
+Path ~/.local/mail/posteo/
+Inbox ~/.local/mail/posteo/INBOX
 Subfolders Verbatim
 
 Channel posteo

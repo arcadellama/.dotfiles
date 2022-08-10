@@ -1,0 +1,1 @@
+*/10 * * * * killall mbsync &>/dev/null; /usr/local/bin/mbsync -a -V 2>&1 > ~/.mbsync_log
