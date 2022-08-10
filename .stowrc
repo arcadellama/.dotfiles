@@ -1,0 +1,5 @@
+--dir=~/.dotfiles/scripts
+--target=~/.local/bin
+--ignore='.github'
+--ignore='.gitmodules'
+--ignore='.stowrc'

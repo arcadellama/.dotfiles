@@ -1,0 +1,6 @@
+[submodule "scripts/imagemagick-scripts"]
+	path = scripts/imagemagick-scripts
+	url = git@github.com:arcadellama/imagemagick-scripts
+[submodule "scripts/nowplaying.sh"]
+	path = scripts/nowplaying.sh
+	url = git@github.com:arcadellama/nowplaying.sh
