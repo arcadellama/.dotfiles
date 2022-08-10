@@ -1,0 +1,22 @@
+IMAPStore posteoIMAP
+Host posteo.de
+Port 993
+UserCmd "bw get username posteo.de"
+PassCmd "bw get password posteo.de"
+AuthMechs LOGIN
+SSLType IMAPS
+
+MaildirStore posteoMaildir
+Path ~/mail/posteo/
+Inbox ~/mail/posteo/INBOX
+Subfolders Verbatim
+
+Channel posteo
+Far :posteoIMAP:
+Near :posteoMaildir:
+Create Both
+Expunge Both
+Patterns *
+SyncState *
+ExpireUnread no
+MaxMessages 0

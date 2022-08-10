@@ -1,0 +1,86 @@
+set nocompatible
+filetype plugin indent on
+filetype indent on
+syntax enable
+if has("gui_macvim") " macOS MacVim
+    set guifont=Victor\ Mono\ Regular:h16
+    " Swipe to move between buffers
+    map <silent> <SwipeLeft> :bprev<CR>
+    map <silent> <SwipeRight> :bnext<CR>
+
+elseif has("gui_gtk") " linux gvim
+    set guifont=Victor\ Mono\ \ 16
+    set guioptions-=T
+    set guioptions+=c
+endif
+
+set termguicolors   
+set clipboard=unnamed
+
+set encoding=utf-8
+set wildmenu
+set title
+set showcmd
+set mouse =a
+set autowrite
+set autoread
+
+set number
+set showmatch
+set mat=2 "how long highlight lasts
+set visualbell
+
+set hlsearch
+set smartcase
+set incsearch
+set ignorecase
+
+set expandtab "tab to spaces
+set shiftwidth=4 "1 tab = 4 spaces
+set shiftround "round up to nearest tab
+set tabstop=4
+set softtabstop=4
+
+set autoindent 
+set backspace=indent,eol,start
+set wrap
+set linebreak
+"set colorcolumn=80
+set lazyredraw
+
+set ruler
+set noswapfile
+set backupdir=$HOME/.vim/backup
+set undodir=$HOME/.vim/undo
+set undofile
+set undolevels=1000
+
+set history=1000
+
+" Templates
+autocmd BufNewFile *.sh 0r ~/.vim/templates/bash.sh
+autocmd BufNewFile *.py 0r ~/.vim/templates/python3.sh
+autocmd BufNewFile *.html 0r ~/.vim/templates/page.html
+
+" Fountain screenwriting syntax
+au BufRead,BufNewFile *.fountain set filetype=fountain
+
+" Sane config to fix YAML indents
+autocmd FileType yaml setlocal ts=2 sts=2 sw=2 expandtab
+
+" Fix page up and down
+map <PageUp> <C-U>
+map <PageDown> <C-D>
+imap <PageUp> <C-O><C-U>
+imap <PageDown> <C-O><C-D>
+
+" Auto save and load folding markers
+autocmd BufWinLeave *.* mkview
+autocmd BufWinEnter *.* silent loadview
+
+" Map <space-bar> to fold/unfold if on a fold
+nnoremap <silent> <Space> @=(foldlevel('.')?'za':"\<Space>")<CR>
+vnoremap <Space> zf
+
+
+set viminfo+=n~/.vim/viminfo

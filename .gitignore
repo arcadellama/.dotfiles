@@ -1,0 +1,10 @@
+.DS_Store
+.secrets
+vim/.vim/undo
+vim/.vim/backup
+vim/.vim/viminfo
+vim/.vim/view
+bash/.bash_history
+mutt/.mutt/cache
+.netrwhist
+.bw-session

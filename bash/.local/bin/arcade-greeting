@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# Print figlet for interactive shells:
+
+llama=$(cat <<EOF
+  \/
+ <'l
+  ll
+  llama~
+  || ||
+  '' ''
+EOF
+)
+
+case $(uname -s) in
+    Linux* ) 
+        if [ -e /etc/slackware-version ]; then
+            DISTRO_INFO="$(cat /etc/slackware-version)"
+        elif
+            [ -e /etc/lsb-release ]; then
+            DISTRO_INFO="$(grep -oP "DISTRIB_ID=\K.*" /etc/lsb-release) \
+                $(grep -oP "DISTRIB_RELEASE=\K.*" /etc/lsb-release)"
+        elif
+            [ -e /etc/debian_version ]; then
+            DISTRO_INFO="$(uname -v | awk '{print $3}') \
+                $(cat /etc/debian_version)"
+        elif
+            [ -e /etc/os-release ]; then
+            DISTRO_INFO="$(grep -oPm 1 "NAME=\K.*" /etc/os-release | \
+                awk '{print $1}' | tr -d '"') \
+                $(grep -oP "VERSION_ID=\K.*" /etc/os-release | \
+                tr -d '"')"
+        else
+            DISTRO_INFO="$(uname -s) $(uname -v)"
+        fi
+        WC_CMD="wc -L"
+        ;;
+    Darwin* ) 
+        DISTRO_INFO="$(sw_vers -productName) $(sw_vers -productVersion)"
+        WC_CMD="wc -w"
+        ;;
+    FreeBSD* )
+        DISTRO_INFO="$(uname -s) $(/bin/freebsd-version)"
+        WC_CMD="wc -L"
+        ;;
+esac
+
+HOST_NAME="$(sed 's/\..*$//' <<< "$(uname -n)")"
+FIGLET="$(command -v figlet 2>/dev/null)"
+FIG_STYLE="smslant"
+LOLCAT="$(command -v lolcat 2>/dev/null)"
+ARCADE_GREETING="/tmp/arcade_greeting"
+
+echo $DISTRO_INFO > "$ARCADE_GREETING"
+
+if [ -x "$FIGLET" ]; then
+    if [[ "$HOST_NAME" == "arcadefuego" ]]; then
+        echo
+        sleep .9
+    fi
+    echo $HOST_NAME | "$FIGLET" -f "$FIG_STYLE" > "$ARCADE_GREETING"
+    WORDCOUNT=$($WC_CMD < "$ARCADE_GREETING" | tr -d ' ')
+    CONSOLE=$(/usr/bin/tput cols)
+    if [ "$WORDCOUNT" -gt "$CONSOLE" ]; then
+        echo $HOST_NAME > "$ARCADE_GREETING"
+    fi
+fi
+
+if [ -x "$LOLCAT" ]; then
+        echo "$(cat "$ARCADE_GREETING")" | $LOLCAT 
+        echo "$llama" | $LOLCAT
+        echo $DISTRO_INFO | $LOLCAT
+else
+        echo "$(cat $ARCADE_GREETING)"
+        echo "$llama"
+        echo $DISTRO_INFO
+fi
+echo        
+
+#rm "$ARCADE_GREETING"
+exit

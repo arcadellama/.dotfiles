@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+
+prefix="/usr/bin"
+docker_binary="$prefix/docker compose"
+docker_dir="${docker_dir:-/opt/docker}"
+docker_file="compose.yml"
+
+set -e
+
+if [ $docker_binary --version >/dev/null 2>&1 ]; then
+	echo "Error. $docker_binary cannot be found."
+	exit 1
+elif [ ! $1 ]; then
+	$binary
+	exit 1
+fi
+
+cd $docker_dir
+
+for dir in $(find . -maxdepth 1 -mindepth 1 -type d); do
+	pushd $dir >/dev/null
+	if [ -e "$docker_file" ]; then
+		echo "$(basename $PWD)"
+		$binary $*
+	else
+		echo "Skipping $PWD"
+	fi
+	popd >/dev/null
+done
