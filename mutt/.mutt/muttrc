@@ -1,6 +1,6 @@
 ## Posteo account settings
 set realname = "Justin Teague"
-set from = "bw get username posteo.de"
+set from = `bw get username posteo.de`
 set hostname = "posteo.de"
 
 set edit_headers = yes
@@ -19,19 +19,16 @@ set header_cache='~/.mutt/cache/headers'
 set message_cachedir='~/.mutt/cache/bodies'
 set certificate_file='~/.mutt/cache/certificates'
 
-#Authentication
-#set imap_user = "bw get username posteo.de"
-#set imap_pass = "bw get password posteo.de"
-
 # SMTP Settings
 set smtp_pass="`bw get password posteo.de`"
 set smtp_url=smtps://$from@$hostname
 set ssl_force_tls = yes
 
 # Default editor
-set editor = "vim +/^$"
+set editor = "vim +':set textwidth=78' +':set fo+=tcqw' +/^$"
 set charset = "utf-8"
 set config_charset = "utf-8"
+set text_flowed
 
 # General settings
 set sort = 'threads'
