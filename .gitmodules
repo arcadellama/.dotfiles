@@ -4,3 +4,6 @@
 [submodule "scripts/nowplaying.sh"]
 	path = scripts/nowplaying.sh
 	url = git@github.com:arcadellama/nowplaying.sh
+[submodule "fonts/victor-mono"]
+	path = fonts/victor-mono
+	url = git@github.com:rubjo/victor-mono.git
