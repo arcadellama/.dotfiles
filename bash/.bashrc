@@ -61,6 +61,11 @@ if [ ! -d $HOME/.vim/undo ]; then
     mkdir -p $HOME/.vim/undo
 fi
 
+# Setup mail directory if missing
+if [ -x "$(command -v mbsync)" ]; then
+    mkdir -p "$HOME"/.local/mail/posteo
+fi
+
 # Check if interactive prompt
 if [[ $- == *i* ]]; then 
     # Fancy login-prompt
