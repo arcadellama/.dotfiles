@@ -2,7 +2,8 @@ Requires:
 mutt
 isync
 w3m
+bitwarden-cli (bw)
 goimapnotify (https://gitlab.com/shackra/goimapnotify)
 
     $ sudo loginctl enable-linger <username>
-    $ systemctl --user enable goimapnotify@.service
+    $ systemctl --user enable --now goimapnotify@posteo.service
