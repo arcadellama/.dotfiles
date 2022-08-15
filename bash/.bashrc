@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# Local path environment
-export PATH="/usr/local/sbin:/usr/sbin:/sbin:$PATH"
-export PATH="$PATH:$HOME/.local/bin"
 
 # Import Bitwarden CLI Session Key
 if [ -r $HOME/.secret/.bw_session ]; then
@@ -87,3 +84,10 @@ if [[ $- == *i* ]]; then
     fi
 fi
 
+# Local path environment
+export PATH=/usr/local/sbin:/usr/sbin:/sbin:$PATH
+export PATH=$PATH:$HOME/.local/bin
+
+# Go path env
+export GOPATH=$HOME/Projects/go
+export PATH=$PATH:$GOPATH/bin
