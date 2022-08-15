@@ -4,6 +4,7 @@
 # Import Bitwarden CLI Session Key
 if [ -r $HOME/.secret/.bw_session ]; then
     . $HOME/.secret/.bw_session
+    systemctl --user import-environment BW_SESSION
 fi
 
 # macOS Environment
@@ -90,4 +91,3 @@ export PATH=$PATH:$HOME/.local/bin
 
 # Go path env
 export GOPATH=$HOME/Projects/go
-export PATH=$PATH:$GOPATH/bin
