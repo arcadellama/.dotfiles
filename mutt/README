@@ -1,9 +1,10 @@
 Requires:
 mutt
-isync
 w3m
-bitwarden-cli (bw) linked to --> /usr/local/bin/bw
-goimapnotify (https://gitlab.com/shackra/goimapnotify) linked to --> /usr/local/bin/goimapnotify
+isync --> /usr/local/bin/mbsync
+bitwarden-cli (bw) --> /usr/local/bin/bw
+goimapnotify (https://gitlab.com/shackra/goimapnotify) --> /usr/local/bin/goimapnotify
 
     $ sudo loginctl enable-linger <username>
+    $ systemctl --user enable --now mbsync@posteo
     $ systemctl --user enable --now goimapnotify@posteo.service

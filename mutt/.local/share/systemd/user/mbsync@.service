@@ -1,0 +1,9 @@
+[Unit]
+Description=IMAP synchronization service
+
+[Service]
+type=oneshot
+ExecStart=/usr/local/bin/mbsync %i:INBOX
+
+[Install]
+WantedBy=default.target
