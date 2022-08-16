@@ -15,6 +15,9 @@ else
     alias dc='docker compose'
 fi
 
+# tmux color fix
+#alias tmux='tmux -2'
+
 # Remove snapcraft cruft
 alias lsblk='lsblk -o name,mountpoint,label,size,fstype,uuid | grep -v ^loop'
 alias df='df | grep -v /dev/loop'

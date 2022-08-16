@@ -1,6 +1,6 @@
 ## Posteo account settings
 set realname = "Justin Teague"
-set from = `bw get username posteo.de`
+set from = "`bw get username posteo.de`"
 set hostname = "posteo.de"
 
 set edit_headers = yes
