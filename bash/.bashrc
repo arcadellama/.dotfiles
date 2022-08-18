@@ -79,9 +79,7 @@ if [[ $- == *i* ]]; then
     fi
 
     if [ -x /usr/local/bin/nowplaying ]; then
-            /usr/local/bin/nowplaying \
-                -p "192.168.111.1 10.0.1.111" -w 100 | "$__out"
-            printf "\n"
+            /usr/local/bin/nowplaying -p "arcadefuego" -w 100
     fi
 fi
 
