@@ -79,7 +79,7 @@ if [[ $- == *i* ]]; then
     fi
 
     if [ -x /usr/local/bin/nowplaying ]; then
-            /usr/local/bin/nowplaying -p "arcadefuego" -w 100
+            /usr/local/bin/nowplaying -p 10.0.1.111,arcadefuego -w 100
     fi
 fi
 
