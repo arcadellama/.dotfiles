@@ -1,16 +1,13 @@
-# Handy Scripts
-A pseduo-git repo with submodules to be installed via stow
+# imagemagick-scripts
+## A personal collection of handy scripts for quick imagemagick tweaks on the command line.
 
-## Install
-```
-mkdir -p /usr/local/stow
-git clone git@github.com:arcadellama/handy-scripts /usr/local/stow/scripts
-cd /usr/local/stow/scripts
-git submodule update --init --recursive
-```
+### make-square
+Makes an image a square. Wow. Very dumb right now with the center of gravity being the center of the image.
 
-## Update
-After each git pull, be sure to run:
+### make-circle
+This makes an image... into a circle! Surprise!
+
+Because a circle is best made from a square, a common command would be:
 ```
-git submodule update --recursive
+make-circle < make-square image.jpg
 ```

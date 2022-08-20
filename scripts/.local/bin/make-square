@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+# Make image a square
+_input="$1"
+_output="$2"
+
+if [ -z "$_output" ]; then
+    _output="$(echo $_input | awk -F. '{print $1}')"_square.png
+fi
+
+magick "$_input" -gravity center -extent "%[fx:h<w?h:w]x%[fx:h<w?h:w]" "$_output"

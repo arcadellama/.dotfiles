@@ -1,6 +1,3 @@
-[submodule "scripts/imagemagick-scripts"]
-	path = scripts/imagemagick-scripts
-	url = git@github.com:arcadellama/imagemagick-scripts
 [submodule "fonts/victor-mono"]
 	path = fonts/victor-mono
 	url = git@github.com:rubjo/victor-mono.git

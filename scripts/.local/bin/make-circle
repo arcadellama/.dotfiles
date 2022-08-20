@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+_input="$1"
+_output="$2"
+
+if [ -z "$_output" ]; then
+    _output="$(echo $_input | awk -F. '{print $1}')"_circle.png
+fi
+
+convert $_input \( +clone -threshold -1 -negate -fill white -draw "circle `identify -format %w "$_input" | awk '{print $1/2}'`, `identify -format %h "$_input" | awk '{print $1/2}'` `identify -format %w "$_input" | awk '{print $1/2}'`, 0" \) -alpha Off -compose copy_opacity -composite "$_output"
