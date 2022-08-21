@@ -2,4 +2,5 @@ dotfiles
 Personal dotfiles for Linux / BSD / macOS
 
 deps: bitwarden-cli mutt isync w3m
-deps: github.com/arcadellama/plex-nowplaying
+deps: git@github.com:arcadellama/plex-nowplaying
+deps; git@github.com:dylanaraps/pfetch.git
