@@ -66,18 +66,15 @@ fi
 
 # Check if interactive prompt
 if [[ $- == *i* ]]; then 
-    # Fancy login-prompt
-    if [ -x $HOME/.local/bin/arcade-greeting ]; then
+    
+    if [ -x "$(command -v pfetch)" ]; then
+        printf "\n"
+        "$(command -v pfetch)"
+    elif [ -x $HOME/.local/bin/arcade-greeting ]; then
         $HOME/.local/bin/arcade-greeting
     fi
 
     # Plex Status
-    if [ -x "$(command -v lolcat)" ]; then
-        __out="lolcat"
-    else
-        __out="tee"
-    fi
-
     if [ -x /usr/local/bin/nowplaying ]; then
             /usr/local/bin/nowplaying -p 10.0.1.111,arcadefuego -w 80
     fi
