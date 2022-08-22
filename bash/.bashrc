@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 
-
 # Import Bitwarden CLI Session Key
 if [ -r $HOME/.secret/.bw_session ]; then
     . $HOME/.secret/.bw_session
-    systemctl --user import-environment BW_SESSION
+    export BW_SESSION="$(bw unlock --raw);"
+    case "$(uname)" in *Linux*)
+            systemctl --user import-environment BW_SESSION
+            ;;
+    esac
 fi
 
 # macOS Environment
