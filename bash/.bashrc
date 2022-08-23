@@ -78,7 +78,7 @@ if [[ $- == *i* ]]; then
 
     # Plex Status
     if [ -x /usr/local/bin/nowplaying ]; then
-            /usr/local/bin/nowplaying -c $HOME/.config/nowplaying.conf -w 80
+            /usr/local/bin/nowplaying -w 80
     fi
 fi
 
