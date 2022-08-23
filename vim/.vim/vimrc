@@ -17,6 +17,8 @@ endif
 set termguicolors   
 set clipboard=unnamed
 
+set colorcolumn=80
+
 set encoding=utf-8
 set wildmenu
 set title
@@ -45,7 +47,6 @@ set autoindent
 set backspace=indent,eol,start
 set wrap
 set linebreak
-"set colorcolumn=80
 set lazyredraw
 
 set ruler

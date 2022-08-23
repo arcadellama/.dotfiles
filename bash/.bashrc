@@ -3,7 +3,6 @@
 # Import Bitwarden CLI Session Key
 if [ -r $HOME/.secret/.bw_session ]; then
     . $HOME/.secret/.bw_session
-    export BW_SESSION="$(bw unlock --raw);"
     case "$(uname)" in *Linux*)
             systemctl --user import-environment BW_SESSION
             ;;
@@ -79,7 +78,7 @@ if [[ $- == *i* ]]; then
 
     # Plex Status
     if [ -x /usr/local/bin/nowplaying ]; then
-            /usr/local/bin/nowplaying -p 10.0.1.111,arcadefuego -w 80
+            /usr/local/bin/nowplaying -c $HOME/.config/nowplaying.conf -w 80
     fi
 fi
 
