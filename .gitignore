@@ -1,4 +1,5 @@
 .DS_Store
+.DS_Store
 .secrets
 vim/.vim/undo
 vim/.vim/backup
