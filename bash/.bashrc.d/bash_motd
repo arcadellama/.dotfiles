@@ -1,0 +1,16 @@
+# bash_motd
+# Check if interactive prompt
+if [[ $- == *i* ]]; then 
+    
+    if [ -x "$(command -v pfetch)" ]; then
+        printf "\n"
+        "$(command -v pfetch)"
+    elif [ -x $HOME/.local/bin/arcade-greeting ]; then
+        $HOME/.local/bin/arcade-greeting
+    fi
+
+    # Plex Status
+    if [ -x /usr/local/bin/nowplaying ]; then
+            /usr/local/bin/nowplaying -w 80
+    fi
+fi

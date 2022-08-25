@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+# bash_aliases
 
 # Colorful output
 alias grep='grep --color=always'
@@ -19,5 +19,7 @@ fi
 #alias tmux='tmux -2'
 
 # Remove snapcraft cruft
-alias lsblk='lsblk -o name,mountpoint,label,size,fstype,uuid | grep -v ^loop'
-alias df='df | grep -v /dev/loop'
+if [ -x "$(command -v snap)" ]; then
+	alias lsblk='lsblk -o name,mountpoint,label,size,fstype,uuid | grep -v ^loop'
+	alias df='df | grep -v /dev/loop'
+fi

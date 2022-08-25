@@ -1,0 +1,5 @@
+# bash_mail
+# Setup mail directory if missing
+if [ -x "$(command -v mbsync)" ]; then
+    mkdir -p "$HOME"/.local/mail/posteo
+fi

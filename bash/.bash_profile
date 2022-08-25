@@ -1,20 +1,8 @@
-#!/usr/bin/env bash
+# .bash_profile
 
-case "$(uname -s)" in
-    Darwin)
-        export BASH_SILENCE_DEPRECATION_WARNING=1
-        if [ ! -e "$HOME/.hushlogin" ]; then
-        touch "$HOME/.hushlogin"
-        fi
-        ;;
-esac
-
-if [ -r "$HOME/.bashrc" ]; then
-    source $HOME/.bashrc
-elif
-    [ -r /etc/bashrc_Apple_Terminal ]; then
-    source /etc/bashrc_Apple_Terminal
-elif
-    [ -r /etc/bashrc ]; then
-    source /etc/bashrc
+# Get the aliases and functions
+if [ -f ~/.bashrc ]; then
+	. ~/.bashrc
 fi
+
+# User specific environment and startup programs
