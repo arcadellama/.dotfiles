@@ -1,6 +1,4 @@
 # bash_go
 
 # Go path env
-if [ -x "$(command -v go)" ]; then
-    export GOPATH=$HOME/Projects/go
-fi
+export GOPATH=$HOME/Projects/go

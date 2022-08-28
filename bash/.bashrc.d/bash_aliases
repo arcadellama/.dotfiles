@@ -7,18 +7,17 @@ alias ll='ls -alF'
 alias la='ls -A'
 
 # Docker Compose 
-if [ -x /usr/bin/docker-compose ]; then
-    alias dc='/usr/bin/docker-compose'
-elif [ -x /usr/local/bin/docker-compose ]; then
-    alias dc='/usr/local/bin/docker-compose'
-else
-    alias dc='docker compose'
+if [ -x "$(command -v docker-compose)" ]; then
+    alias dc="$(command -v docker-compose)"
+elif [ -x "$(command -v docker)" ]; then
+    alias dc="$(command -v docker) compose"
 fi
 
 # tmux color fix
 #alias tmux='tmux -2'
+#alias tmux='tmux attach'
 
-# Remove snapcraft cruft
+# Remove snapcraft cruft from lsblk & df
 if [ -x "$(command -v snap)" ]; then
 	alias lsblk='lsblk -o name,mountpoint,label,size,fstype,uuid | grep -v ^loop'
 	alias df='df | grep -v /dev/loop'

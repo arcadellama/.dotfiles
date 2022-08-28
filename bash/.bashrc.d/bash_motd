@@ -10,7 +10,7 @@ if [[ $- == *i* ]]; then
     fi
 
     # Plex Status
-    if [ -x /usr/local/bin/nowplaying ]; then
-            /usr/local/bin/nowplaying -w 80
+    if [ -x "$(command -v nowplaying)" ]; then
+        "$(command -v nowplaying)" --width 80
     fi
 fi

@@ -1,6 +1,6 @@
 # Import Bitwarden CLI Session Key
-if [ -r $HOME/.secret/.bw_session ]; then
-    . $HOME/.secret/.bw_session
+if [ -r "$HOME"/.secret/.bw_session ]; then
+    . "$HOME"/.secret/.bw_session
     case "$(uname)" in *Linux*)
             systemctl --user import-environment BW_SESSION
             ;;
