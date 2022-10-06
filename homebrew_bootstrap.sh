@@ -2,6 +2,7 @@
 
 homebrew_apps="
 bash,bash,formula
+PlexAmp,plexamp,cask
 bash-completion,bash-completion,formula
 shellcheck,shellcheck,formula
 bitwarden-cli,bitwarden-cli,formula
@@ -18,16 +19,25 @@ LibreOffice,libreoffice-still,cask
 Office,microsoft-office,cask
 Edge,microsoft-edge,cask
 adobe-creative-cloud,adobe-creative-cloud,cask
+PlexAmp,plexamp,cask
 Teams,microsoft-teams,cask
-computer-modern-font,homebrew/cask-fonts/font-computer-modern,cask
-Victor-Mono-Font,font-victor-mono,cask
 tailscale,tailscale,cask
 UTM,utm,cask
 steam,steam,cask
+BBEdit,bbedit,cask
+computer-modern-font,homebrew/cask-fonts/font-computer-modern,cask
+Victor-Mono-Font,font-victor-mono,cask
 "
-
-if [ -x /usr/local/bin/brew ]; then
-    brew_bin="/usr/local/bin/brew"
+brew_bin="/usr/local/bin/brew"
+if [ ! -x "$brew_bin" ]; then
+    printf "Install Homebrew? (Y/n): \n"
+    read -r _installbrew
+    case "$_installbrew" in
+        N|n) exit 0 ;;
+          *) printf "Installing Homebrew...\n"
+             /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+             ;;
+     esac
 fi
 
 if [ "$(uname)" != "Darwin" ]; then
@@ -35,7 +45,9 @@ if [ "$(uname)" != "Darwin" ]; then
     exit 1
 fi
 
+
 main() {
+    printf "%b" "\033[s" # save cursor position
     if [ -z "$brew_bin" ]; then
         printf "Hey stupid, is Homebrew even installed?\n"
         exit 1
@@ -44,23 +56,28 @@ main() {
     old_ifs=$IFS
     while IFS=',' read -r name app type; do
         [ -n "$name" ] || continue
-         if "$brew_bin" list "$app" >/dev/null 2>&1; then
-             continue
-         fi
-         case "$type" in
+        printf "%b" "\033[2K"   # clear line
+        printf "%b" "\033[u"    # restore cursor position
+        printf "Checking %s..." "$name"
+        if "$brew_bin" list "$app" >/dev/null 2>&1; then
+            continue
+        fi
+        printf "%b" "\033[2K"   # clear line
+        printf "%b" "\033[u"    # restore cursor position
+        case "$type" in
              formula)  printf "Installing %s...\n" "$name"
                        "$brew_bin" install "$app"
-                       shift 3 ;;
+                       ;;
                 cask)  printf "Installing %s...\n" "$name"
                        "$brew_bin" install --casks "$app"
-                       shift 3 ;;
-                   *)  printf "Error, %s isn't properly formatted.\n" \
-                       "$type" ;;
-         esac
+                       ;;
+        esac
+        printf "%b" "\033[s" # save cursor position
     done << EOF
 $(printf "%s\n" "$homebrew_apps")
 EOF
     IFS=$old_ifs
+    printf "%b" "\033[2K"   # clear line
 } 
 
 main "$@"
