@@ -28,6 +28,7 @@ BBEdit,bbedit,cask
 computer-modern-font,homebrew/cask-fonts/font-computer-modern,cask
 Victor-Mono-Font,font-victor-mono,cask
 Chrome,google-chrome,cask
+bootstrap-studio,bootstrap-studio,cask
 "
 brew_bin="/usr/local/bin/brew"
 if [ ! -x "$brew_bin" ]; then
@@ -46,15 +47,25 @@ if [ "$(uname)" != "Darwin" ]; then
     exit 1
 fi
 
+is_running() {
+    ps -p "$1" >/dev/null 2>&1
+}
 
 main() {
     if [ -z "$brew_bin" ]; then
         printf "Hey stupid, is Homebrew even installed?\n"
         exit 1
     fi
-    "$brew_bin" update --auto-update 
-    "$brew_bin" upgrade --quiet
     printf "%b" "\033[s" # save cursor position
+    printf "Checking for updates. "
+    "$brew_bin" update --auto-update >/dev/null 2>&1 &
+    bgproc="$!"
+    while is_running "$bgproc"; do
+        printf ". "
+        sleep 1
+    done
+    printf "%b" "\033[2K"   # clear line
+    printf "%b" "\033[u"    # restore cursor position
     old_ifs=$IFS
     while IFS=',' read -r name app type; do
         [ -n "$name" ] || continue
