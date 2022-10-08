@@ -1,5 +1,6 @@
 #!/usr/bin/env sh
 
+brew_bin="/usr/local/bin/brew"
 homebrew_apps="
 bash,bash,formula
 PlexAmp,plexamp,cask
@@ -30,7 +31,11 @@ Victor-Mono-Font,font-victor-mono,cask
 Chrome,google-chrome,cask
 bootstrap-studio,bootstrap-studio,cask
 "
-brew_bin="/usr/local/bin/brew"
+if [ "$(uname)" != "Darwin" ]; then
+    printf "Hey idiot, don't use this on a non-mac system.\n"
+    exit 1
+fi
+
 if [ ! -x "$brew_bin" ]; then
     printf "Install Homebrew? (Y/n): \n"
     read -r _installbrew
@@ -42,10 +47,6 @@ if [ ! -x "$brew_bin" ]; then
      esac
 fi
 
-if [ "$(uname)" != "Darwin" ]; then
-    printf "Hey idiot, don't use this on a non-mac system.\n"
-    exit 1
-fi
 
 is_running() {
     ps -p "$1" >/dev/null 2>&1
