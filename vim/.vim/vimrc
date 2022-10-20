@@ -60,7 +60,6 @@ set history=1000
 
 " Templates
 autocmd BufNewFile *.sh 0r ~/.vim/templates/bash.sh
-autocmd BufNewFile *.py 0r ~/.vim/templates/python3.sh
 autocmd BufNewFile *.html 0r ~/.vim/templates/page.html
 
 " Fountain screenwriting syntax

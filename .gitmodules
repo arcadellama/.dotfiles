@@ -1,3 +1,6 @@
 [submodule "fonts/victor-mono"]
 	path = fonts/victor-mono
 	url = git@github.com:rubjo/victor-mono.git
+[submodule "vim/.vim/pack/vim-javascript/start/vim-javascript"]
+	path = vim/.vim/pack/vim-javascript/start/vim-javascript
+	url = https://github.com/pangloss/vim-javascript.git
