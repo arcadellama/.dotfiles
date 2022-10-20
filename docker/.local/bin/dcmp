@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/usr/bin/env bash
 
 prefix="/usr/bin"
 docker_binary="$prefix/docker compose"
@@ -7,11 +7,11 @@ docker_file="compose.yml"
 
 set -e
 
-if [ $docker_binary --version >/dev/null 2>&1 ]; then
+if [ "$docker_binary" --version >/dev/null 2>&1 ]; then
 	echo "Error. $docker_binary cannot be found."
 	exit 1
 elif [ ! $1 ]; then
-	$binary
+	"$docker_binary"
 	exit 1
 fi
 
@@ -21,7 +21,7 @@ for dir in $(find . -maxdepth 1 -mindepth 1 -type d); do
 	pushd $dir >/dev/null
 	if [ -e "$docker_file" ]; then
 		echo "$(basename $PWD)"
-		$binary $*
+		"$docker_binary" $*
 	else
 		echo "Skipping $PWD"
 	fi
