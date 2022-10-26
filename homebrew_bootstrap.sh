@@ -2,6 +2,7 @@
 
 brew_bin="/usr/local/bin/brew"
 homebrew_apps="
+imagemagick,formula
 bash,bash,formula
 PlexAmp,plexamp,cask
 bash-completion,bash-completion,formula
