@@ -1,0 +1,80 @@
+#!/usr/bin/env sh
+
+set -e
+
+# Global Variables
+# Manually assign here or in a configuration file located in:
+# ~/.dcmp
+# ~/.config/dcmp.conf
+# /usr/local/etc/dcmp.conf
+# /etc/dcmp.conf
+
+config_file=""
+docker_compose_bin=""
+working_dir=""
+debug=false
+
+get_conf() {
+    __conf_array="
+    $HOME/.dcmp
+    $HOME/.config/dcmp.conf
+    /usr/local/etc/dcmp.conf
+    /etc/dcmp.conf
+    "
+       while read -r __config_file; do 
+        for __conf in "$__config_file"; do
+            if [ -r "$__conf" ]; then
+                printf "%s\n" "$__conf" && return
+            fi
+        done
+    done << EOF
+$(printf "%s" "$__conf_array")
+EOF
+}
+
+dep_check() {
+    # Check for configuration
+    if [ -n "$config_file" ]; then
+        _config="$config_file"
+    else
+        _config="$(get_conf)"
+    fi
+
+    if [ -r "$_config" ]; then
+        . "$_config"
+    elif "$debug"; then
+        printf "Cannot find configuration.\n"
+    fi
+
+    # Check for docker-compose binary
+    if ! $docker_compose_bin version >/dev/null 2>&1; then
+        printf "Cannot find docker compose.\n" && return 1
+    fi
+
+    # Check for working directory
+    if [ -z "$working_dir" ]; then
+        printf "working_dir is null.\n" && return 1
+    elif [ ! -d "$working_dir" ]; then
+        printf "Cannot find working dir: %s\n" "$working_dir" && return 1
+    fi
+}
+
+main() {
+    # Dependency check
+    dep_check || exit
+
+    # Start main program
+    cd "$working_dir"
+
+    for _dir in $(find . -maxdepth 1 -mindepth 1 -type d); do
+        cd "$_dir"
+        for _compose_file in $(find . -maxdepth 1 -mindepth 1 -type f); do
+            case "$_compose_file" in
+                *compose.yml) $docker_compose_bin $* ;;
+            esac
+        done
+        cd "$working_dir"
+    done
+}
+
+main $@

@@ -1,0 +1,3 @@
+docker_compose_bin="docker compose`
+working_dir="/usr/local/containers"
+debug=false
