@@ -12,7 +12,30 @@ set -e
 config_file=""
 docker_compose_bin=""
 working_dir=""
-debug=false
+verbose=false
+
+########################################
+# Colors and Time
+########################################
+tchron="$(date "+%Y-%m-%d %H:%M:%S")"
+tgreen="\033[32m"
+tred="\033]31m"
+tbold="\033[1m"
+treset="\033[m"
+
+########################################
+# Functions
+########################################
+
+log_this() {
+    __messsage="$1"
+    __typecolor="$tgreen"
+
+    case "$__message" in *Error*) __typecolor="$tred" ;; esac
+    
+    printf "%b%b[%s]: %s%b\n" \
+        "$tbold" "$__typecolor" "$tchron" "$__message" "$treset"
+}
 
 get_conf() {
     __conf_array="
@@ -42,39 +65,44 @@ dep_check() {
 
     if [ -r "$_config" ]; then
         . "$_config"
-    elif "$debug"; then
-        printf "Cannot find configuration.\n"
+    elif "$verbose"; then
+        log_this "Error. Cannot find configuration."
     fi
 
     # Check for docker-compose binary
     if ! $docker_compose_bin version >/dev/null 2>&1; then
-        printf "Cannot find docker compose.\n" && return 1
+        log_this "Error. Cannot find docker compose."
+        return 1
     fi
 
     # Check for working directory
     if [ -z "$working_dir" ]; then
-        printf "working_dir is null.\n" && return 1
+        log_this "Error. working_dir is null."
+        return 1
     elif [ ! -d "$working_dir" ]; then
-        printf "Cannot find working dir: %s\n" "$working_dir" && return 1
+        log_this "Error. Cannot find working dir: $working_dir"
+        return 1
     fi
 }
 
 main() {
-    # Dependency check
-    dep_check || exit
 
-    # Start main program
     cd "$working_dir"
-
     for _dir in $(find . -maxdepth 1 -mindepth 1 -type d); do
         cd "$_dir"
         for _compose_file in $(find . -maxdepth 1 -mindepth 1 -type f); do
             case "$_compose_file" in
-                *compose.yml) $docker_compose_bin $* ;;
+                *compose.yml)
+                    printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset"
+                    $docker_compose_bin $* ;;
             esac
         done
         cd "$working_dir"
     done
 }
 
+# Dependency check
+dep_check || exit
+
+# Start main program
 main $@
