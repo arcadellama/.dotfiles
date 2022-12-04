@@ -86,18 +86,14 @@ dep_check() {
 }
 
 main() {
-
-    cd "$working_dir"
-    for _dir in $(find . -maxdepth 1 -mindepth 1 -type d); do
-        cd "$_dir"
-        for _compose_file in $(find . -maxdepth 1 -mindepth 1 -type f); do
+    for _dir in $(find $working_dir/. -maxdepth 1 -mindepth 1 -type d); do
+        for _compose_file in $(find $_dir/. -maxdepth 1 -mindepth 1 -type f); do
             case "$_compose_file" in
                 *compose.yml)
                     printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset"
-                    $docker_compose_bin $* ;;
+                    $docker_compose_bin --project-directory $_dir $* ;;
             esac
         done
-        cd "$working_dir"
     done
 }
 
