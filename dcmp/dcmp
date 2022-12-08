@@ -12,7 +12,7 @@ set -e
 config_file=""
 docker_compose_bin=""
 working_dir=""
-verbose=false
+verbose=true
 
 ########################################
 # Colors and Time
@@ -90,7 +90,9 @@ main() {
         for _compose_file in $(find $_dir/. -maxdepth 1 -mindepth 1 -type f); do
             case "$_compose_file" in
                 *compose.yml)
-                    printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset"
+                    if "$verbose"; then
+                        printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset"
+                    fi
                     $docker_compose_bin --project-directory $_dir $* ;;
             esac
         done
