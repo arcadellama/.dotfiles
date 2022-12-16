@@ -1,5 +1,7 @@
 #!/usr/bin/env sh
 
+set -e
+
 # Global Variables
 # Manually assign here or in a configuration file located in:
 # ~/.dcmp
@@ -119,6 +121,13 @@ main() {
                         $docker_compose_bin --project-directory $_dir unpause
 
                     else
+                        # Check if plex is playing
+                        if [ -x "${_dir}/plex_is_playing.sh" ]; then
+                            if ${_dir}/plex_is_playing.sh; then
+                                printf "Plex is playing, skipping.\n"
+                                continue
+                            fi
+                        fi
                         # Normal docker compose commands
                         $docker_compose_bin --project-directory $_dir $*
                     fi
