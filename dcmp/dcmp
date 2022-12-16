@@ -28,7 +28,7 @@ treset="\033[m"
 ########################################
 
 log_this() {
-    __messsage="$1"
+    __message="$1"
     __typecolor="$tgreen"
 
     case "$__message" in *Error*) __typecolor="$tred" ;; esac
