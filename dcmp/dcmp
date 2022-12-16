@@ -1,7 +1,5 @@
 #!/usr/bin/env sh
 
-set -e
-
 # Global Variables
 # Manually assign here or in a configuration file located in:
 # ~/.dcmp
@@ -26,16 +24,6 @@ treset="\033[m"
 ########################################
 # Functions
 ########################################
-
-log_this() {
-    __message="$1"
-    __typecolor="$tgreen"
-
-    case "$__message" in *Error*) __typecolor="$tred" ;; esac
-    
-    printf "%b%b[%s]: %s%b\n" \
-        "$tbold" "$__typecolor" "$tchron" "$__message" "$treset"
-}
 
 get_conf() {
     __conf_array="
@@ -66,34 +54,74 @@ dep_check() {
     if [ -r "$_config" ]; then
         . "$_config"
     elif "$verbose"; then
-        log_this "Error. Cannot find configuration."
+        echo "Error. Cannot find configuration."
     fi
 
     # Check for docker-compose binary
     if ! $docker_compose_bin version >/dev/null 2>&1; then
-        log_this "Error. Cannot find docker compose."
+        echo "Error. Cannot find docker compose."
+        return 1
+    fi
+
+    # Check for rsync binary
+    if [ ! -x $(command -v rsync) ]; then
+        echo "Error. rsync not found."
         return 1
     fi
 
     # Check for working directory
     if [ -z "$working_dir" ]; then
-        log_this "Error. working_dir is null."
+        echo "Error. working_dir is null."
         return 1
     elif [ ! -d "$working_dir" ]; then
-        log_this "Error. Cannot find working dir: $working_dir"
+        echo "Error. Cannot find working dir: $working_dir"
         return 1
     fi
 }
 
 main() {
-    for _dir in $(find $working_dir/. -maxdepth 1 -mindepth 1 -type d); do
-        for _compose_file in $(find $_dir/. -maxdepth 1 -mindepth 1 -type f); do
+    __backup_dir=""
+    case $1 in
+        --backup)
+            if [ -z "$2" ]; then
+                echo "Error: backup directory not specified"
+                exit 1
+            fi
+            __backup_dir="$2" 
+            ;;
+    esac
+    for _dir in $(find $working_dir/ -maxdepth 1 -mindepth 1 -type d); do
+        for _compose_file in $(find $_dir/ -maxdepth 1 -mindepth 1 -type f); do
             case "$_compose_file" in
                 *compose.yml)
                     if "$verbose"; then
                         printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset"
                     fi
-                    $docker_compose_bin --project-directory $_dir $* ;;
+                    if [ -n "$__backup_dir" ]; then
+                        echo "Backing up $_dir to $__backup_dir..."
+
+                        # Pause the docker compose
+                        $docker_compose_bin --project-directory $_dir pause
+
+                        # Move into working directory
+                        cd "$working_dir"
+
+                        # Check for rsync exclusions
+                        if [ -f "${_dir}/rsync_exclude" ]; then
+                            $(command -v rsync) -avH \
+                                --exclude-from ${_dir}/rsync_exclude \
+                                $(basename "$_dir") "$__backup_dir"
+                        else
+                            $(command -v rsync) -avH \
+                                $(basename "$_dir") "$__backup_dir"
+                        fi
+                        # Unpause docker compose
+                        $docker_compose_bin --project-directory $_dir unpause
+
+                    else
+                        # Normal docker compose commands
+                        $docker_compose_bin --project-directory $_dir $*
+                    fi
             esac
         done
     done
