@@ -83,6 +83,7 @@ dep_check() {
 
 main() {
     __backup_dir=""
+    __container_dir=""
     case $1 in
         --backup)
             if [ -z "$2" ]; then
@@ -94,6 +95,7 @@ main() {
     esac
     for _dir in $(find $working_dir/ -maxdepth 1 -mindepth 1 -type d); do
         for _compose_file in $(find $_dir/ -maxdepth 1 -mindepth 1 -type f); do
+            __container_dir="$(basename $_dir)"
             case "$_compose_file" in
                 *compose.yml)
                     if "$verbose"; then
@@ -112,10 +114,10 @@ main() {
                         if [ -f "${_dir}/rsync_exclude" ]; then
                             $(command -v rsync) -avH \
                                 --exclude-from ${_dir}/rsync_exclude \
-                                $(basename "$_dir") "$__backup_dir"
+                                ${__container_dir}/ ${__backup_dir}/${__container_dir}
                         else
                             $(command -v rsync) -avH \
-                                $(basename "$_dir") "$__backup_dir"
+                                ${__container_dir}/ ${__backup_dir}/${__container_dir}
                         fi
                         # Unpause docker compose
                         $docker_compose_bin --project-directory $_dir unpause
