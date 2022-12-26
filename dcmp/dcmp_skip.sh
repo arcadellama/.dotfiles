@@ -2,8 +2,8 @@
 
 set -e
 
-SKIP_MESSAGE="Result is true, skipping DCMP on this project."
-DO_NOT_SKIP_MESSAGE="Result is not true, running DCMP on this project."
+# SKIP_MESSAGE="Result is true, skipping DCMP on this project." # optional
+# DO_NOT_SKIP_MESSAGE="Result is not true, running DCMP on this project." # optional
 # SKIP_SCRIPT="/path/to/script_to_run.sh"
 
 skip_dcmp() {

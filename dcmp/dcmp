@@ -114,9 +114,9 @@ dcmp_backup() {
     cd "$__working_dir" || exit
 
     # Check for rsync exclusions
-    if [ -f "${__project_dir}/rsync_exclude" ]; then
+    if [ -f "${__project_dir}/dcmp_exclude" ]; then
         $__rsync_bin -avH \
-            --exclude-from ${__project_dir}/rsync_exclude \
+            --exclude-from ${__project_dir}/dcmp_exclude \
             $(basename $__project_dir) ${__backup_dir}/
     else
         $__rsync_bin -avH \
@@ -133,7 +133,7 @@ main() {
     # Get docker compose command
     __docker_compose_bin=$(get_docker_compose_bin)
     if "$__docker_compose_bin" >/dev/null 2>&1; then
-        printf "Error: docker compose not installed?\n"
+        printf "[dcmp] Error: docker compose not installed?\n"
         show_usage
         return 1
     fi
@@ -141,7 +141,7 @@ main() {
     # Get rsync binary
     __rsync_bin=$(get_rsync_bin)
     if [ ! -x "$__rsync_bin" ]; then
-        printf "Error: rsync not installed?\n"
+        printf "[dcmp] Error: rsync not installed?\n"
         show_usage
         return 1
     fi
@@ -216,26 +216,26 @@ main() {
                 if [ "$retval" -eq 0 ]; then
                     if [ -n "$message" ]; then
                         case "$__verbose" in
-                            true) printf "%b%b%s%b\n" \
+                            true) printf "%b%b[dcmp]: %s%b\n" \
                                 "$tbold" "$tred" "$message" "$treset" ;;
                         esac
                     fi
                     continue
                 elif [ -n "$message" ]; then
                         case "$__verbose" in
-                            true) printf "%b%b%s%b\n" \
+                            true) printf "%b%b[dcmp]: %s%b\n" \
                                 "$tbold" "$tgreen" "$message" "$treset" ;;
                         esac
                 fi
             done << EOF
-$(sh -c "${__project_dir}/dcmp_skip.sh")
+$(/usr/bin/env sh "${__project_dir}/dcmp_skip.sh")
 EOF
         IFS=$old_ifs
         fi
 
         ## This is it! Time to print a log message
         case "$__verbose" in
-            true) printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset" ;;
+            true) printf "%b[dcmp %s]:%b\n" "$tbold" "$tchron" "$treset" ;;
         esac
 
         # Check if backup mode 
