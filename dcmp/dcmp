@@ -1,18 +1,23 @@
 #!/usr/bin/env sh
 
-set -e
+# set -e
 
-# Global Variables
+# Global Configuration
 # Manually assign here or in a configuration file located in:
 # ~/.dcmp
 # ~/.config/dcmp.conf
 # /usr/local/etc/dcmp.conf
 # /etc/dcmp.conf
 
-config_file=""
-docker_compose_bin=""
-working_dir=""
-verbose=true
+# DCMP_CONFIG="" # optional
+
+# Global configuration settings
+DCMP_WORKING_DIR="" 
+DCMP_BACKUP_DIR=""
+DCMP_VERBOSE=true # boolean
+
+# Runtime configuration settings
+DCMP_CWD="$PWD"
 
 ########################################
 # Colors and Time
@@ -27,119 +32,234 @@ treset="\033[m"
 # Functions
 ########################################
 
-get_conf() {
+show_usage() {
+    cat << EOF
+    dcmp <docker compose command>
+    dcmp --config /path/to/config <docker compose command>
+    dcmp --working-dir /path/to/compose_dir --verbose true <docker compose command>
+    dcmp --backup --backup-dir /path/to/backup_dir
+EOF
+}
+
+get_config() {
     __conf_array="
     $HOME/.dcmp
     $HOME/.config/dcmp.conf
     /usr/local/etc/dcmp.conf
     /etc/dcmp.conf
     "
-       while read -r __config_file; do 
-        for __conf in "$__config_file"; do
-            if [ -r "$__conf" ]; then
-                printf "%s\n" "$__conf" && return
-            fi
-        done
+    # Check for global conf
+    if [ -n "$DCMP_GLOBAL_CONF" ]; then
+        printf "%s\n" "$DCMP_GLOBAL_CONF" && return
+    fi
+
+    # Check for config file in __conf_array
+    while read -r __config_file; do 
+        if [ -r "$__config_file" ]; then
+            printf "%s\n" "$__config_file" && return
+        fi
     done << EOF
 $(printf "%s" "$__conf_array")
 EOF
+
+    # Return error if no configuration found
+    return 1
 }
 
-dep_check() {
-    # Check for configuration
-    if [ -n "$config_file" ]; then
-        _config="$config_file"
+get_docker_compose_bin() {
+    if $(command -v docker) compose version >/dev/null; then
+        printf "%s compose\n" "$(command -v docker)"
+    elif [ -x $(command -v docker-compose) ]; then
+        printf "%s\n" "$(command -v docker-compose)"
     else
-        _config="$(get_conf)"
-    fi
-
-    if [ -r "$_config" ]; then
-        . "$_config"
-    elif "$verbose"; then
-        echo "Error. Cannot find configuration."
-    fi
-
-    # Check for docker-compose binary
-    if ! $docker_compose_bin version >/dev/null 2>&1; then
-        echo "Error. Cannot find docker compose."
-        return 1
-    fi
-
-    # Check for rsync binary
-    if [ ! -x $(command -v rsync) ]; then
-        echo "Error. rsync not found."
-        return 1
-    fi
-
-    # Check for working directory
-    if [ -z "$working_dir" ]; then
-        echo "Error. working_dir is null."
-        return 1
-    elif [ ! -d "$working_dir" ]; then
-        echo "Error. Cannot find working dir: $working_dir"
         return 1
     fi
 }
 
-main() {
-    __backup_dir=""
-    __container_dir=""
-    case $1 in
-        --backup)
-            if [ -z "$2" ]; then
-                echo "Error: backup directory not specified"
-                exit 1
-            fi
-            __backup_dir="$2" 
-            ;;
-    esac
-    for _dir in $(find $working_dir/ -maxdepth 1 -mindepth 1 -type d); do
-        for _compose_file in $(find $_dir/ -maxdepth 1 -mindepth 1 -type f); do
-            __container_dir="$(basename $_dir)"
-            case "$_compose_file" in
-                *compose.yml)
-                    if "$verbose"; then
-                        printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset"
-                    fi
-                    if [ -n "$__backup_dir" ]; then
-                        echo "Backing up $_dir to $__backup_dir..."
+get_rsync_bin() {
+    if [ -x "$(command -v rsync)" ]; then
+        printf "%s\n" "$(command -v rsync)"
+    else
+        return 1
+    fi
+}
 
-                        # Pause the docker compose
-                        $docker_compose_bin --project-directory $_dir pause
-
-                        # Move into working directory
-                        cd "$working_dir"
-
-                        # Check for rsync exclusions
-                        if [ -f "${_dir}/rsync_exclude" ]; then
-                            $(command -v rsync) -avH \
-                                --exclude-from ${_dir}/rsync_exclude \
-                                ${__container_dir}/ ${__backup_dir}/${__container_dir}
-                        else
-                            $(command -v rsync) -avH \
-                                ${__container_dir}/ ${__backup_dir}/${__container_dir}
-                        fi
-                        # Unpause docker compose
-                        $docker_compose_bin --project-directory $_dir unpause
-
-                    else
-                        # Check if plex is playing
-                        if [ -x "${_dir}/plex_is_playing.sh" ]; then
-                            if ${_dir}/plex_is_playing.sh; then
-                                printf "Plex is playing, skipping.\n"
-                                continue
-                            fi
-                        fi
-                        # Normal docker compose commands
-                        $docker_compose_bin --project-directory $_dir $*
-                    fi
-            esac
-        done
+get_container_dirs() {
+    __working_dir="$1"
+    for __dir in $(find $__working_dir/ -maxdepth 1 -mindepth 1 -type d); do
+        printf "%s " "$__dir"
     done
 }
 
-# Dependency check
-dep_check || exit
+compose_check() {
+    __working_dir="$1"
+    for __compose in $(find $__working_dir/ -maxdepth 1 -mindepth 1 -type f); do
+        case "$__compose" in
+            *compose.yml) printf "%s\n" "$__compose" && return ;;
+        esac
+    done
+}
 
-# Start main program
+dcmp_backup() {
+    __working_dir="$1"
+    __project_dir="$2"
+    __backup_dir="$3"
+
+    printf "Backing up %s to %s...\n" "$__project_dir" "$__backup_dir"
+
+    # Pause the docker compose
+    $__docker_compose_bin --project-directory $__project_dir pause
+
+    # Move to working directory for rsync
+    cd "$__working_dir" || exit
+
+    # Check for rsync exclusions
+    if [ -f "${__project_dir}/rsync_exclude" ]; then
+        $__rsync_bin -avH \
+            --exclude-from ${__project_dir}/rsync_exclude \
+            $(basename $__project_dir) ${__backup_dir}/
+    else
+        $__rsync_bin -avH \
+            $(basename $__project_dir) ${__backup_dir}/
+    fi
+
+    # Unpause docker compose
+    $__docker_compose_bin --project-directory $__project_dir unpause
+
+}
+
+main() {
+
+    # Get docker compose command
+    __docker_compose_bin=$(get_docker_compose_bin)
+    if "$__docker_compose_bin" >/dev/null 2>&1; then
+        printf "Error: docker compose not installed?\n"
+        show_usage
+        return 1
+    fi
+
+    # Get rsync binary
+    __rsync_bin=$(get_rsync_bin)
+    if [ ! -x "$__rsync_bin" ]; then
+        printf "Error: rsync not installed?\n"
+        show_usage
+        return 1
+    fi
+
+    # Get and source config (if exists)
+    __config=$(get_config)
+    [ -r "$__config" ] && . "$__config"
+
+    # Set global configs
+    __working_dir="$DCMP_WORKING_DIR"
+    __backup_dir="$DCMP_BACKUP_DIR"
+    __verbose="$DCMP_VERBOSE"
+
+    # Runtime config
+    __command_args=""
+    __backup_mode=""
+
+    # Parse runtime args
+    while [ "$#" -gt 0 ]; do
+        case $1 in
+            --help|--usage)
+                show_usage && exit ;;
+            --config)
+                if [ -r "$2" ]; then
+                    # Source configuration
+                    . "$2"
+                else
+                    printf "Error: %s not found.\n" "$2" 
+                    exit 1
+                fi
+                shift 2 ;;
+            --working-dir)
+                __working_dir="$2"
+                shift 2 ;;
+            --backup)
+                __backup_mode=yes
+                shift ;;
+            --backup-dir)
+                __backup_dir="$2"
+                shift 2 ;;
+            --verbose)
+                __verbose="$2"
+                shift 2 ;;
+            *)
+                if [ -z "$__command_args" ]; then
+                    __command_args="$1"
+                else
+                    __command_args="${__command_args} $1"
+                fi
+                shift ;;
+        esac
+    done
+
+    # Working directory is a requirement; default is current working dir
+    if [ -z "$__working_dir" ]; then
+        __working_dir="$DCMP_CWD"
+    fi
+
+    # Get container dirs from working dir
+    __container_dir="$(get_container_dirs $__working_dir)"
+
+    # Confirm it is a docker compose project directory
+    for __project_dir in $__container_dir; do
+        # Check if compose file exists, move on if not
+        __compose_file="$(compose_check $__project_dir)"
+        [ -f "$__compose_file" ] || continue
+
+        # Check if dcmp_skip.sh exists
+        if [ -f "${__project_dir}/dcmp_skip.sh" ]; then
+            old_ifs=$IFS
+            while IFS=, read -r retval message; do
+                if [ "$retval" -eq 0 ]; then
+                    if [ -n "$message" ]; then
+                        case "$__verbose" in
+                            true) printf "%b%b%s%b\n" \
+                                "$tbold" "$tred" "$message" "$treset" ;;
+                        esac
+                    fi
+                    continue
+                elif [ -n "$message" ]; then
+                        case "$__verbose" in
+                            true) printf "%b%b%s%b\n" \
+                                "$tbold" "$tgreen" "$message" "$treset" ;;
+                        esac
+                fi
+            done << EOF
+$(sh -c "${__project_dir}/dcmp_skip.sh")
+EOF
+        IFS=$old_ifs
+        fi
+
+        ## This is it! Time to print a log message
+        case "$__verbose" in
+            true) printf "%b[%s]:%b\n" "$tbold" "$tchron" "$treset" ;;
+        esac
+
+        # Check if backup mode 
+        if [ -n "$__backup_mode" ]; then
+
+            # Set backup directory to default if not exists
+            [ -n "$__backup_dir" ] || __backup_dir="${__project_dir}/backup"
+
+            # Let's back 'em up!
+            dcmp_backup \
+                "$__working_dir" \
+                "$__project_dir" \
+                "$__backup_dir" \
+
+        else # Normal docker compose commands
+
+            $__docker_compose_bin \
+                --project-directory \
+                $__project_dir \
+                $__command_args
+            
+        fi
+
+    done
+}
+
 main $@
