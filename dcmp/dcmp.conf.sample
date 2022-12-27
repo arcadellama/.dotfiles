@@ -1,4 +1,6 @@
-DCMP_WORKING_DIR=""
-DCMP_BACKUP_DIR=""
-DCMP_SKIP_SCRIPT=""
-DCMP_VERBOSE=true
+DCMP_VERBOSE=true 
+# DCMP_WORKING_DIR="/opt/docker"
+# DCMP_BACKUP_DIR="/opt/docker/backups"
+# DCMP_SKIP_SCRIPT="${DCMP_WORKING_DIR}/example-script.sh"
+# DCMP_DOCKER_COMPOSE_BIN="/usr/bin/docker compose"
+# DCMP_RSYNC_BIN="/usr/bin/rsync"

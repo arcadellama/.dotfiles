@@ -1,6 +1,10 @@
 #!/usr/bin/env sh
+# shellcheck disable=SC2044
 
-# set -e
+set -e
+
+DCMP_PRGNAM="dcmp"
+DCMP_VERSION="0.1"
 
 # Global Configuration
 # Manually assign here or in a configuration file located in:
@@ -12,6 +16,8 @@
 # DCMP_CONFIG="" # optional
 
 # Global configuration settings
+DCMP_DOCKER_COMPOSE_BIN=""
+DCMP_RSYNC_BIN=""
 DCMP_WORKING_DIR="" 
 DCMP_BACKUP_DIR=""
 DCMP_SKIP_SCRIPT=""
@@ -21,25 +27,41 @@ DCMP_VERBOSE=true # boolean
 DCMP_CWD="$PWD"
 
 ########################################
-# Colors and Time
-########################################
-tchron="$(date "+%Y-%m-%d %H:%M:%S")"
-tgreen="\033[32m"
-tred="\033]31m"
-tbold="\033[1m"
-treset="\033[m"
-
-########################################
 # Functions
 ########################################
 
 show_usage() {
     cat << EOF
+    $DCMP_PRGNAM -- $DCMP_VERSION
+
     dcmp <docker compose command>
     dcmp --config /path/to/config <docker compose command>
     dcmp --working-dir /path/to/compose_dir --verbose true <docker compose command>
     dcmp --backup --backup-dir /path/to/backup_dir
+
 EOF
+}
+
+log_this() {
+    __message=$*
+    __green="\033[32m"
+    __red="\033]31m"
+    __bold="\033[1m"
+    __reset="\033[m"
+    __date="$(date "+%Y-%m-%d %H:%M:%S")"
+    __message_color="$__green"
+
+    case "$__message" in
+        *Error*|*error*) __message_color="$__red" ;;
+    esac
+
+    printf "%b%b[%s %s]: %s%b\n" \
+        "$__bold" \
+        "$__message_color" \
+        "$DCMP_PRGNAM" \
+        "$__date" \
+        "$__message" \
+        "$__reset"
 }
 
 get_global_config() {
@@ -72,6 +94,9 @@ get_local_config() {
     __conf_array="
     ${__project_dir}/.dcmp.local
     ${__project_dir}/dcmp.local
+    ${__project_dir}/dcmp.local.conf
+    ${__project_dir}/.dcmp
+    ${__project_dir}/dcmp.conf
     "
 
     # Check for config file in __conf_array
@@ -88,9 +113,11 @@ EOF
 }
 
 get_docker_compose_bin() {
-    if $(command -v docker) compose version >/dev/null; then
+    if [ -x "$DCMP_DOCKER_COMPOSE_BIN" ]; then
+        printf "%s\n" "$DCMP_DOCKER_COMPOSE_BIN"
+    elif $(command -v docker) compose version >/dev/null; then
         printf "%s compose\n" "$(command -v docker)"
-    elif [ -x $(command -v docker-compose) ]; then
+    elif [ -x "$(command -v docker-compose)" ]; then
         printf "%s\n" "$(command -v docker-compose)"
     else
         return 1
@@ -98,7 +125,9 @@ get_docker_compose_bin() {
 }
 
 get_rsync_bin() {
-    if [ -x "$(command -v rsync)" ]; then
+    if [ -x "$DCMP_RSYNC_BIN" ]; then
+        printf "%s\n" "$DCMP_RSYNC_BIN"
+    elif [ -x "$(command -v rsync)" ]; then
         printf "%s\n" "$(command -v rsync)"
     else
         return 1
@@ -112,11 +141,23 @@ get_container_dirs() {
     done
 }
 
+get_hashbang() {
+    __hashbang="$(head -n 1 $1)"
+    case "$__hashbang" in 
+        \#\!*)
+            printf "%s\n" "${__hashbang#\#\!}"
+            return ;;
+    esac
+    return 1
+}
+
 compose_check() {
     __working_dir="$1"
     for __compose in $(find $__working_dir/ -maxdepth 1 -mindepth 1 -type f); do
         case "$__compose" in
-            *compose.yml) printf "%s\n" "$__compose" && return ;;
+            *compose.yml|*compose.yaml)
+                printf "%s\n" "$__compose"
+                return ;;
         esac
     done
 }
@@ -127,8 +168,11 @@ dcmp_backup() {
     __working_dir="$3"
     __project_dir="$4"
     __backup_dir="$5"
+    __verbose="$6"
 
-    printf "[dcmp] Backing up %s to %s...\n" "$__project_dir" "$__backup_dir"
+    if "$__verbose"; then
+    log_this "Backing up $__project_dir to $__backup_dir"
+    fi
 
     # Pause the docker compose
     $__docker_compose_bin --project-directory $__project_dir pause
@@ -137,13 +181,16 @@ dcmp_backup() {
     cd "$__working_dir" || exit
 
     # Check for rsync exclusions
-    if [ -f "${__project_dir}/dcmp_exclude" ]; then
+    if [ -r "${__project_dir}/dcmp_exclude" ]; then
+        if "$__verbose"; then
+            log_this "Found dcmp_exclude in $__project_dir."
+        fi
         $__rsync_bin -aH \
             --exclude-from ${__project_dir}/dcmp_exclude \
-            $(basename $__project_dir) ${__backup_dir}/
+            "$(basename $__project_dir)" ${__backup_dir}/
     else
         $__rsync_bin -aH \
-            $(basename $__project_dir) ${__backup_dir}/
+            "$(basename $__project_dir)" ${__backup_dir}/
      fi
 
     # Unpause docker compose
@@ -153,8 +200,13 @@ dcmp_backup() {
 
 dcmp_standard() {
     __docker_compose_bin="$1"
-    __working_dir="$2"
+    __project_dir="$2"
     __command_args="$3"
+    __verbose="$4"
+    
+    if "$__verbose"; then
+        log_this "Working in $__project_dir"
+    fi
 
     $__docker_compose_bin \
         --project-directory \
@@ -167,16 +219,16 @@ main() {
 
     # Get docker compose command
     __docker_compose_bin=$(get_docker_compose_bin)
-    if "$__docker_compose_bin" >/dev/null 2>&1; then
-        printf "[dcmp] Error: docker compose not installed?\n"
+    if ! "$__docker_compose_bin" >/dev/null 2>&1; then
+        log_this "Error: docker compose not installed?"
         show_usage
         return 1
     fi
 
     # Get rsync binary
     __rsync_bin=$(get_rsync_bin)
-    if [ ! -x "$__rsync_bin" ]; then
-        printf "[dcmp] Error: rsync not installed?\n"
+    if ! "$__rsync_bin" >/dev/null 2>&1; then
+        log_this "Error: rsync not installed?"
         show_usage
         return 1
     fi
@@ -188,14 +240,14 @@ main() {
     # Set global configs
     __working_dir="$DCMP_WORKING_DIR"
     __backup_dir="$DCMP_BACKUP_DIR"
+    __skip_script="$DCMP_SKIP_SCRIPT"
     __verbose="$DCMP_VERBOSE"
 
     # Runtime config
     __local_config=""
-    __skip_script=""
     __command_args=""
     __backup_mode=""
-    __force_skip=0
+    __force_skip=false
 
     # Parse runtime args
     while [ "$#" -gt 0 ]; do
@@ -216,10 +268,13 @@ main() {
                 fi
                 shift 2 ;;
             --force)
-                __force_skip=1
+                __force_skip=true
                 shift ;;
             --help|--usage)
                 show_usage && exit ;;
+            --skip-script)
+                __skip_script="$2"
+                shift 2 ;;
             --verbose)
                 __verbose="$2"
                 shift 2 ;;
@@ -244,50 +299,53 @@ main() {
     # Get container dirs from working dir
     __container_dir="$(get_container_dirs $__working_dir)"
 
-    # Confirm it is a docker compose project directory
+    # Confirm it is a docker compose project directory, then run program
+    __project_dir="" # Clear project dir
     for __project_dir in $__container_dir; do
+        
+        # Project-only vars
+        __local_project_name="$(basename $__project_dir)"
+        __local_backup_dir=""
+        __local_skip_script=""
+        __local_verbose=""
+
         # Check if compose file exists, move on if not
         __compose_file="$(compose_check $__project_dir)"
-        [ -f "$__compose_file" ] || continue
+        [ -e "$__compose_file" ] || continue
 
         # Check for local configuration
         __local_config="$(get_local_conf $__project_dir)"
-        [ -r "$__local_config" ] && . "$__local_config"
-        
-        __skip_script="$DCMP_LOCAL_SKIP_SCRIPT"
-        __backup_dir="$DCMP_LOCAL_BACKUP_DIR"
-        __verbose="$DCMP_LOCAL_VERBOSE"
 
-        # Check if dcmp_skip.sh exists
-        if [ "$__force_skip" -eq 0 ]; then
-            if [ -f "${__project_dir}/dcmp_skip.sh" ]; then
-            old_ifs=$IFS
-            while IFS=, read -r retval message; do
-                if [ "$retval" -eq 0 ]; then
-                    if [ -n "$message" ]; then
-                        case "$__verbose" in
-                            true) printf "%b%b[dcmp]: %s%b\n" \
-                                "$tbold" "$tred" "$message" "$treset" ;;
-                        esac
+        # Source local configuration if exists
+        if [ -r "$__local_config" ]; then
+            . "$__local_config" # Source local config
+            __local_skip_script=${DCMP_SKIP_SCRIPT:-$__skip_script}
+            __local_backup_dir=${DCMP_BACKUP_DIR:-$__backup_dir}
+            __local_verbose=${DCMP_VERBOSE:-$__verbose}
+        else
+            __local_skip_script="$__skip_script"
+            __local_backup_dir="$__backup_dir"
+            __local_verbose="$__verbose"
+        fi
+
+        # Check if skip script exists and run it
+        if ! "$__force_skip"; then
+            if [ -r "$__local_skip_script" ]; then
+                __command_exec="$(get_hashbang "$__local_skip_script")"
+                if ! "$__command_exec" >/dev/null 2>&1; then
+                    log_this \
+                        "Error: skip script in $__local_project_name invalid."
+                else
+                    if "$__command_exec" "$__local_skip_script"; then
+                        "$__local_verbose" && log_this \
+                            "Skipping $__local_project_name"
+                        continue # restart the for loop, skipping this project
                     fi
-                    continue
-                elif [ -n "$message" ]; then
-                        case "$__verbose" in
-                            true) printf "%b%b[dcmp]: %s%b\n" \
-                                "$tbold" "$tgreen" "$message" "$treset" ;;
-                        esac
                 fi
-            done << EOF
-$(/usr/bin/env sh "${__project_dir}/dcmp_skip.sh")
-EOF
-            IFS=$old_ifs
             fi
         fi
 
-        ## This is it! Time to print a log message
-        case "$__verbose" in
-            true) printf "%b[dcmp %s]:%b\n" "$tbold" "$tchron" "$treset" ;;
-        esac
+        ### This is it! Run commands...
 
         # Check if backup mode 
         if [ -n "$__backup_mode" ]; then
@@ -301,7 +359,8 @@ EOF
                 "$__rsync_bin" \
                 "$__working_dir" \
                 "$__project_dir" \
-                "$__backup_dir" \
+                "$__local_backup_dir" \
+                "$__local_verbose"
 
         else # Normal docker compose commands
 
@@ -309,10 +368,12 @@ EOF
                 "$__docker_compose_bin" \
                 "$__project_dir" \
                 "$__command_args" \
+                "$__local_verbose"
             
         fi
 
     done
 }
 
+# shellcheck disable=2068
 main $@
