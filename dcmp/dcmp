@@ -168,7 +168,7 @@ dcmp_backup() {
     __local_backup_dir="$5"
     __local_verbose="$6"
     __local_rsync_flags="$7"
-    __local_rsnyc_name="$8"
+    __local_rsync_name="$8"
 
     if "$__verbose"; then
     log_this "Backing up $__project_dir to $__local_backup_dir"
