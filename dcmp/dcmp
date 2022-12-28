@@ -181,12 +181,12 @@ dcmp_backup() {
     cd "$__working_dir" || exit
 
     # Check for rsync exclusions
-    if [ -r "${__project_dir}/dcmp_exclude" ]; then
+    if [ -r "${__project_dir}/backup_exclude" ]; then
         if "$__verbose"; then
-            log_this "Found dcmp_exclude in $__project_dir."
+            log_this "Found backup_exclude in $__project_dir."
         fi
         $__rsync_bin "$__local_rsync_flags" \
-            --exclude-from ${__project_dir}/dcmp_exclude \
+            --exclude-from ${__project_dir}/backup_exclude \
             "$(basename $__project_dir)" "${__local_backup_dir}/${__local_rsync_name}-$(basename $__project_dir)"
     else
         $__rsync_bin "$__local_rsync_flags" \

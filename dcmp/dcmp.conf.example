@@ -1,6 +1,8 @@
-DCMP_VERBOSE=true 
 # DCMP_WORKING_DIR="/opt/docker"
 # DCMP_BACKUP_DIR="/opt/docker/backups"
 # DCMP_SKIP_SCRIPT="${DCMP_WORKING_DIR}/example-script.sh"
 # DCMP_DOCKER_COMPOSE_BIN="/usr/bin/docker compose"
 # DCMP_RSYNC_BIN="/usr/bin/rsync"
+# DCMP_RSYNC_FLAGS="-aH"
+# DCMP_RSYNC_NAME="$(date +%Y%m%d)"
+# DCMP_VERBOSE=true
