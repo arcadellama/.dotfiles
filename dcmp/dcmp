@@ -3,8 +3,8 @@
 
 set -e
 
-DCMP_PRGNAM="dcmp"
-DCMP_VERSION="0.1"
+PRGNAM="dcmp"
+VERSION="0.1"
 
 # Global Configuration
 # Manually assign here or in a configuration file located in:
@@ -19,7 +19,6 @@ DCMP_VERSION="0.1"
 DCMP_DOCKER_COMPOSE_BIN=""
 DCMP_RSYNC_BIN=""
 DCMP_RSYNC_FLAGS="-aH"
-DCMP_RSYNC_NAME="$(date +%Y%m%d)"
 DCMP_WORKING_DIR="" 
 DCMP_BACKUP_DIR=""
 DCMP_SKIP_SCRIPT=""
@@ -34,7 +33,7 @@ DCMP_CWD="$PWD"
 
 show_usage() {
     cat << EOF
-    $DCMP_PRGNAM -- $DCMP_VERSION
+    $PRGNAM -- $VERSION
 
     dcmp <docker compose command>
     dcmp --config /path/to/config <docker compose command>
@@ -45,24 +44,53 @@ EOF
 }
 
 log_this() {
+    # Usage: log_this <type> <message>
+    # Message types:
+    # default <blank>
+    # success
+    # error
+    # warn
+
+    __default_color="\033[39m"
+    __orange="\033[33m"
     __green="\033[32m"
     __red="\033[31m"
     __bold="\033[1m"
     __reset="\033[m"
     __date="$(date "+%Y-%m-%d %H:%M:%S")"
-    __message_color="$__green"
+    __header_color="$__default_color"
+    __message_header="[${__date}] [${PRGNAM}]"
+    __visible=false
 
-    case "$*" in
-        *Error*|*error*) __message_color="$__red" ;;
+    case "$1" in
+        error)
+            __message_header="${__message_header} [ERROR]"
+            __header_color="$__red"
+            __visible=true
+            shift ;;
+        success)
+            __message_header="${__message_header} [SUCCESS]"
+            __header_color="$__green"
+            "$DCMP_VERBOSE" &&  __visible=true
+            shift ;;
+        warn|warning)
+            __message_header="${__message_header} [WARN]"
+            __header_color="$__orange"
+            "$DCMP_VERBOSE" && __visible=true
+            shift ;;
+        *) "$DCMP_VERBOSE" &&  __visible=true ;;
     esac
 
-    printf "%b%b[%s] [%s]: %s%b\n" \
-        "$__bold" \
-        "$__message_color" \
-        "$DCMP_PRGNAM" \
-        "$__date" \
-        "$*" \
-        "$__reset"
+    if "$__visible"; then
+        printf "%b%b%s: %b%b%s%b\n" \
+            "$__bold" \
+            "$__header_color" \
+            "$__message_header" \
+            "$__reset" \
+            "$__bold" \
+            "$*" \
+            "$__reset"
+    fi
 }
 
 get_global_config() {
@@ -139,16 +167,6 @@ get_container_dirs() {
     done
 }
 
-get_hashbang() {
-    __hashbang="$(head -n 1 $1)"
-    case "$__hashbang" in 
-        \#\!*)
-            printf "%s\n" "${__hashbang#\#\!}"
-            return ;;
-    esac
-    return 1
-}
-
 compose_check() {
     __working_dir="$1"
     for __compose in $(find $__working_dir/ -maxdepth 1 -mindepth 1 -type f); do
@@ -166,35 +184,46 @@ dcmp_backup() {
     __working_dir="$3"
     __project_dir="$4"
     __local_backup_dir="$5"
-    __local_verbose="$6"
-    __local_rsync_flags="$7"
-    __local_rsync_name="$8"
+    __local_rsync_flags="$6"
+    __retval=""
 
-    if "$__verbose"; then
-    log_this "Backing up $__project_dir to $__local_backup_dir"
-    fi
+    log_this "Pausing $__project_dir and backing up to $__local_backup_dir"
 
     # Pause the docker compose
-    $__docker_compose_bin --project-directory $__project_dir pause
+    if $__docker_compose_bin --project-directory $__project_dir pause; then
+        log_this success "Paused $(basename $__project_dir)."
+    else
+        log_this error "Unable to pause $__project_dir. Error code: $?"
+    fi
 
     # Move to working directory for rsync
-    cd "$__working_dir" || exit
+    cd "$__working_dir"
 
     # Check for rsync exclusions
     if [ -r "${__project_dir}/backup_exclude" ]; then
-        if "$__verbose"; then
-            log_this "Found backup_exclude in $__project_dir."
-        fi
+        log_this "Found backup_exclude file in $__project_dir."
         $__rsync_bin "$__local_rsync_flags" \
             --exclude-from ${__project_dir}/backup_exclude \
-            "$(basename $__project_dir)" "${__local_backup_dir}/${__local_rsync_name}-$(basename $__project_dir)"
+            "$(basename $__project_dir)" "${__local_backup_dir}/"
+        __retval="$?"
     else
         $__rsync_bin "$__local_rsync_flags" \
-            "$(basename $__project_dir)" "${__local_backup_dir}/${__local_rsync_name}-$(basename $__project_dir)"
-     fi
+            "$(basename $__project_dir)" "${__local_backup_dir}/"
+        __retval="$?"
+    fi
+
+    if [ "$__retval" -eq 0 ]; then
+        log_this success "rsync backup of $(basename $__project_dir) complete."
+    else
+        log_this error "rsync backup failed. Error code: $__retval."
+    fi
 
     # Unpause docker compose
-    $__docker_compose_bin --project-directory $__project_dir unpause
+    if $__docker_compose_bin --project-directory $__project_dir unpause; then
+        log_this success "Unpaused $(basename $__project_dir)"
+    else
+        log_this error "Unable to unpause $__project_dir."
+    fi
 
 }
 
@@ -202,16 +231,14 @@ dcmp_standard() {
     __docker_compose_bin="$1"
     __project_dir="$2"
     __command_args="$3"
-    __verbose="$4"
     
-    if "$__verbose"; then
-        log_this "Issuing \"$__command_args\" in $__project_dir"
-    fi
+    log_this "Issuing \"$__command_args\" in $__project_dir"
 
-    $__docker_compose_bin \
-        --project-directory \
-        $__project_dir \
-        $__command_args
+    if $__docker_compose_bin --project-directory $__project_dir $__command_args; then
+        log_this success "Done."
+    else
+        log_this error "Error code: $?"
+    fi
 
 }
 
@@ -220,14 +247,14 @@ main() {
     # Get docker compose command
     __docker_compose_bin="$(get_docker_compose_bin)"
     if ! $__docker_compose_bin >/dev/null 2>&1; then
-        log_this "Error: docker compose not installed?"
+        log_this error "docker compose not installed?"
         return 1
     fi
 
     # Get rsync binary
     __rsync_bin="$(get_rsync_bin)"
     if [ ! -x $__rsync_bin ]; then
-        log_this "Error: rsync not installed?"
+        log_this error "rsync not installed?"
         return 1
     fi
 
@@ -239,15 +266,14 @@ main() {
     __working_dir="$DCMP_WORKING_DIR"
     __backup_dir="$DCMP_BACKUP_DIR"
     __skip_script="$DCMP_SKIP_SCRIPT"
-    __verbose="$DCMP_VERBOSE"
     __rsync_flags="$DCMP_RSYNC_FLAGS"
-    __rsync_name="$DCMP_RSYNC_NAME"
 
     # Runtime config
     __local_config=""
     __command_args=""
     __backup_mode=""
     __force_skip=false
+    __tmp_output="/tmp/${PRGNAM}_skip"
 
     # Parse runtime args
     while [ "$#" -gt 0 ]; do
@@ -275,14 +301,11 @@ main() {
             --rsync-flags)
                 __rsync_flags="$2"
                 shift 2 ;;
-            --rsync-name)
-                __rsync_name="$2"
-                shift 2 ;;
             --skip-script)
                 __skip_script="$2"
                 shift 2 ;;
             --verbose)
-                __verbose="$2"
+                DCMP_VERBOSE="$2"
                 shift 2 ;;
             --working-dir)
                 __working_dir="$2"
@@ -313,9 +336,7 @@ main() {
         __local_project_name="$(basename $__project_dir)"
         __local_backup_dir=""
         __local_skip_script=""
-        __local_verbose=""
         __local_rsync_flags=""
-        __local_rsync_name=""
 
         # Check if compose file exists, move on if not
         __compose_file="$(compose_check $__project_dir)"
@@ -329,31 +350,37 @@ main() {
             . "$__local_config" # Source local config
             __local_skip_script="${DCMP_SKIP_SCRIPT:-$__skip_script}"
             __local_backup_dir="${DCMP_BACKUP_DIR:-$__backup_dir}"
-            __local_verbose="${DCMP_VERBOSE:-$__verbose}"
             __local_rsync_flags="${DCMP_RSYNC_FLAGS:-$__rsync_flags}"
-            __local_rsync_name="${DCMP_RSYNC_NAME:-$__rsync_name}"
         else
             __local_skip_script="$__skip_script"
             __local_backup_dir="$__backup_dir"
-            __local_verbose="$__verbose"
             __local_rsync_flags="$__rsync_flags"
-            __local_rsync_name="$__rsync_name"
         fi
 
         # Check if skip script exists and run it
-        if ! "$__force_skip"; then
-            if [ -r "$__local_skip_script" ]; then
-                __command_exec="$(get_hashbang "$__local_skip_script")"
-                if [ -z "$__command_exec" ]; then
-                    log_this \
-                        "Error: skip script in $__local_project_name invalid."
-                return 1
-                else
-                    if $__command_exec "$__local_skip_script"; then
-                        "$__local_verbose" && log_this \
-                            "Skipping $__local_project_name"
+        if [ -n "$__local_skip_script" ] && ! "$__force_skip"; then
+            if [ ! -x "$__local_skip_script" ]; then
+                    log_this warn \
+                        "Skip script in $__local_project_name is not executable." \
+                        "Defaulting to skip." \
+                        "Try: 'chmod +x $__local_skip_script'"
+                     continue
+            else
+                if "$__local_skip_script" > "$__tmp_output"; then
+                        if [ -s "$__tmp_output" ]; then
+                            log_this \
+                            "Message from $__local_skip_script:" \
+                            "$(cat $__tmp_output)" && rm "$__tmp_output"
+                        fi
+                        log_this "Skipping $__local_project_name."
                         continue # restart the for loop, skipping this project
-                    fi
+                else
+                        if [ -s "$__tmp_output" ]; then
+                            log_this \
+                            "Message from $__local_skip_script:" \
+                            "$(cat $__tmp_output)" && rm "$__tmp_output"
+                        fi
+                        log_this "Not skipping $__local_project_name."
                 fi
             fi
         fi
@@ -373,9 +400,7 @@ main() {
                 "$__working_dir" \
                 "$__project_dir" \
                 "$__local_backup_dir" \
-                "$__local_verbose" \
                 "$__local_rsync_flags" \
-                "$__local_rsync_name"
 
         else # Normal docker compose commands
 
@@ -383,7 +408,6 @@ main() {
                 "$__docker_compose_bin" \
                 "$__project_dir" \
                 "$__command_args" \
-                "$__local_verbose"
             
         fi
 
