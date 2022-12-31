@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 # shellcheck disable=SC2044
 
-set -e
+#set -e
 
 PRGNAM="dcmp"
 VERSION="0.1"
@@ -18,7 +18,8 @@ VERSION="0.1"
 # Global configuration settings
 DCMP_DOCKER_COMPOSE_BIN=""
 DCMP_RSYNC_BIN=""
-DCMP_RSYNC_FLAGS="-aH"
+DCMP_RSYNC_PRE_FLAGS="-aH"
+DCMP_RSYNC_POST_FLAGS="--delete-delay"
 DCMP_WORKING_DIR="" 
 DCMP_BACKUP_DIR=""
 DCMP_SKIP_SCRIPT=""
@@ -183,11 +184,12 @@ dcmp_backup() {
     __rsync_bin="$2"
     __working_dir="$3"
     __project_dir="$4"
-    __local_backup_dir="$5"
-    __local_rsync_flags="$6"
+    __local_backup_dir="${5%/}" # remove any trailing slashes, will add later
+    __local_rsync_pre_flags="$6"
+    __local_rsync_post_flags="$7"
     __retval=""
 
-    log_this "Pausing $__project_dir and backing up to $__local_backup_dir"
+    log_this "Pausing $__project_dir..."
 
     # Pause the docker compose
     if $__docker_compose_bin --project-directory $__project_dir pause; then
@@ -200,16 +202,28 @@ dcmp_backup() {
     cd "$__working_dir"
 
     # Check for rsync exclusions
-    if [ -r "${__project_dir}/backup_exclude" ]; then
-        log_this "Found backup_exclude file in $__project_dir."
-        $__rsync_bin "$__local_rsync_flags" \
-            --exclude-from ${__project_dir}/backup_exclude \
-            "$(basename $__project_dir)" "${__local_backup_dir}/"
+    if [ -r "${__project_dir}/rsync_exclude" ]; then
+        log_this "Found rsync_exclude file in $__project_dir."
+
+        log_this "Trying $__rsync_bin $__local_rsync_pre_flags --exclude from ${__project_dir}/rsync_exclude $(basename $__project_dir) ${__local_backup_dir}/ ${__local_rsync_post_flags}..."
+
+        # Excecute rsync with exclusion file
+        $__rsync_bin "$__local_rsync_pre_flags" \
+            --exclude-from ${__project_dir}/rsync_exclude \
+            "$(basename $__project_dir)" "${__local_backup_dir}/" \
+            ${__local_rsync_post_flags}
         __retval="$?"
+
     else
-        $__rsync_bin "$__local_rsync_flags" \
-            "$(basename $__project_dir)" "${__local_backup_dir}/"
+
+        log_this "Trying $__rsync_bin $__local_rsync_pre_flags $(basename $__project_dir) ${__local_backup_dir}/ ${__local_rsync_post_flags}..."
+
+        # Excecute rsync 
+        log_this $__rsync_bin "$__local_rsync_pre_flags" \
+            "$(basename $__project_dir)" "${__local_backup_dir}/" \
+            ${__local_rsync_post_flags}
         __retval="$?"
+
     fi
 
     if [ "$__retval" -eq 0 ]; then
@@ -266,7 +280,8 @@ main() {
     __working_dir="$DCMP_WORKING_DIR"
     __backup_dir="$DCMP_BACKUP_DIR"
     __skip_script="$DCMP_SKIP_SCRIPT"
-    __rsync_flags="$DCMP_RSYNC_FLAGS"
+    __rsync_pre_flags="$DCMP_RSYNC_PRE_FLAGS"
+    __rsync_post_flags="$DCMP_RSYNC_POST_FLAGS"
 
     # Runtime config
     __local_config=""
@@ -298,8 +313,11 @@ main() {
                 shift ;;
             --help|--usage)
                 show_usage && exit ;;
-            --rsync-flags)
-                __rsync_flags="$2"
+            --rsync-post-flags)
+                __rsync_post_flags="$2"
+                shift 2 ;;
+            --rsync-pre-flags)
+                __rsync_pre_flags="$2"
                 shift 2 ;;
             --skip-script)
                 __skip_script="$2"
@@ -336,7 +354,8 @@ main() {
         __local_project_name="$(basename $__project_dir)"
         __local_backup_dir=""
         __local_skip_script=""
-        __local_rsync_flags=""
+        __local_rsync_pre_flags=""
+        __local_rsync_post_flags=""
 
         # Check if compose file exists, move on if not
         __compose_file="$(compose_check $__project_dir)"
@@ -350,11 +369,13 @@ main() {
             . "$__local_config" # Source local config
             __local_skip_script="${DCMP_SKIP_SCRIPT:-$__skip_script}"
             __local_backup_dir="${DCMP_BACKUP_DIR:-$__backup_dir}"
-            __local_rsync_flags="${DCMP_RSYNC_FLAGS:-$__rsync_flags}"
+            __local_rsync_pre_flags="${DCMP_RSYNC_PRE_FLAGS:-$__rsync_pre_flags}"
+            __local_rsync_post_flags="${DCMP_RSYNC_POST_FLAGS:-$__rsync_post_flags}"
         else
             __local_skip_script="$__skip_script"
             __local_backup_dir="$__backup_dir"
-            __local_rsync_flags="$__rsync_flags"
+            __local_rsync_pre_flags="$__rsync_pre_flags"
+            __local_rsync_post_flags="$__rsync_post_flags"
         fi
 
         # Check if skip script exists and run it
@@ -366,6 +387,7 @@ main() {
                         "Try: 'chmod +x $__local_skip_script'"
                      continue
             else
+                rm -f "$__tmp_output"
                 if "$__local_skip_script" > "$__tmp_output"; then
                         if [ -s "$__tmp_output" ]; then
                             log_this \
@@ -400,7 +422,8 @@ main() {
                 "$__working_dir" \
                 "$__project_dir" \
                 "$__local_backup_dir" \
-                "$__local_rsync_flags" \
+                "$__local_rsync_pre_flags" \
+                "$__local_rsync_post_flags" \
 
         else # Normal docker compose commands
 
