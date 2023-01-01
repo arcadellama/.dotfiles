@@ -5,6 +5,7 @@
 
 PRGNAM="dcmp"
 VERSION="0.1"
+TMP_DIR="/tmp"
 
 # Global Configuration
 # Manually assign here or in a configuration file located in:
@@ -43,6 +44,8 @@ show_usage() {
 
 EOF
 }
+
+# TODO: trap exit function to clean-up any tmp files
 
 log_this() {
     # Usage: log_this <type> <message>
@@ -179,83 +182,6 @@ compose_check() {
     done
 }
 
-dcmp_backup() {
-    __docker_compose_bin="$1"
-    __rsync_bin="$2"
-    __working_dir="$3"
-    __project_dir="$4"
-    __local_backup_dir="${5%/}" # remove any trailing slashes, will add later
-    __local_rsync_pre_flags="$6"
-    __local_rsync_post_flags="$7"
-    __retval=""
-
-    log_this "Pausing $__project_dir..."
-
-    # Pause the docker compose
-    if $__docker_compose_bin --project-directory $__project_dir pause; then
-        log_this success "Paused $(basename $__project_dir)."
-    else
-        log_this error "Unable to pause $__project_dir. Error code: $?"
-    fi
-
-    # Move to working directory for rsync
-    cd "$__working_dir"
-
-    # Check for rsync exclusions
-    if [ -r "${__project_dir}/rsync_exclude" ]; then
-        log_this "Found rsync_exclude file in $__project_dir."
-
-        log_this "Trying $__rsync_bin $__local_rsync_pre_flags --exclude from ${__project_dir}/rsync_exclude $(basename $__project_dir) ${__local_backup_dir}/ ${__local_rsync_post_flags}..."
-
-        # Excecute rsync with exclusion file
-        $__rsync_bin "$__local_rsync_pre_flags" \
-            --exclude-from ${__project_dir}/rsync_exclude \
-            "$(basename $__project_dir)" "${__local_backup_dir}/" \
-            ${__local_rsync_post_flags}
-        __retval="$?"
-
-    else
-
-        log_this "Trying $__rsync_bin $__local_rsync_pre_flags $(basename $__project_dir) ${__local_backup_dir}/ ${__local_rsync_post_flags}..."
-
-        # Excecute rsync 
-        log_this $__rsync_bin "$__local_rsync_pre_flags" \
-            "$(basename $__project_dir)" "${__local_backup_dir}/" \
-            ${__local_rsync_post_flags}
-        __retval="$?"
-
-    fi
-
-    if [ "$__retval" -eq 0 ]; then
-        log_this success "rsync backup of $(basename $__project_dir) complete."
-    else
-        log_this error "rsync backup failed. Error code: $__retval."
-    fi
-
-    # Unpause docker compose
-    if $__docker_compose_bin --project-directory $__project_dir unpause; then
-        log_this success "Unpaused $(basename $__project_dir)"
-    else
-        log_this error "Unable to unpause $__project_dir."
-    fi
-
-}
-
-dcmp_standard() {
-    __docker_compose_bin="$1"
-    __project_dir="$2"
-    __command_args="$3"
-    
-    log_this "Issuing \"$__command_args\" in $__project_dir"
-
-    if $__docker_compose_bin --project-directory $__project_dir $__command_args; then
-        log_this success "Done."
-    else
-        log_this error "Error code: $?"
-    fi
-
-}
-
 main() {
 
     # Get docker compose command
@@ -288,7 +214,7 @@ main() {
     __command_args=""
     __backup_mode=""
     __force_skip=false
-    __tmp_output="/tmp/${PRGNAM}_skip"
+    __tmp_output="${TMP_DIR}/${PRGNAM}_tmp"
 
     # Parse runtime args
     while [ "$#" -gt 0 ]; do
@@ -350,6 +276,9 @@ main() {
     __project_dir="" # Clear project dir
     for __project_dir in $__container_dir; do
         
+        # Clear tmp file
+        rm -f "$__tmp_output"
+
         # Project-only vars
         __local_project_name="$(basename $__project_dir)"
         __local_backup_dir=""
@@ -412,25 +341,86 @@ main() {
         # Check if backup mode 
         if [ -n "$__backup_mode" ]; then
 
-            # Set backup directory to default if not exists
-            [ -n "$__backup_dir" ] || __backup_dir="${__project_dir}/backup"
+            # Set backup directory, exit error 
+            if [ -z "$__backup_dir" ]; then
+                log_this warn "No backup directory found." \
+                    "Skipping backup of $__local_project_name." \
+                    "Set backup directory in configuration file," \
+                    "or as a command-line argument as:" \
+                    "--backupd-dir /path/to/directory"
+                continue # skip this loop
+            fi
 
             # Let's back 'em up!
-            dcmp_backup \
-                "$__docker_compose_bin" \
-                "$__rsync_bin" \
-                "$__working_dir" \
-                "$__project_dir" \
-                "$__local_backup_dir" \
-                "$__local_rsync_pre_flags" \
-                "$__local_rsync_post_flags" \
+            log_this "Pausing $(basename $__project_dir)..."
+
+            # Pause the docker compose
+            if $__docker_compose_bin \
+                --project-directory $__project_dir pause; then
+                log_this success "Paused $(basename $__project_dir)."
+            else
+                log_this error "Unable to pause $__project_dir. Error code: $?"
+            fi
+
+            # Move to working directory for rsync
+            cd "$__working_dir" || exit 1
+
+            # Check for rsync exclusions
+            if [ -r "${__project_dir}/rsync_exclude" ]; then
+                log_this "Found rsync_exclude file in $__project_dir."
+
+                log_this "Trying $__rsync_bin $__local_rsync_pre_flags" \
+                    "--exclude from ${__project_dir}/rsync_exclude" \
+                    "$(basename $__project_dir) ${__local_backup_dir}/" \
+                    "${__local_rsync_post_flags}..."
+
+                 # Excecute rsync with exclusion file
+                 $__rsync_bin "$__local_rsync_pre_flags" \
+                     --exclude-from ${__project_dir}/rsync_exclude \
+                     "$(basename $__project_dir)" "${__local_backup_dir}/" \
+                     ${__local_rsync_post_flags}
+                 __retval="$?"
+
+             else
+
+                 log_this "Trying $__rsync_bin $__local_rsync_pre_flags" \
+                     "$(basename $__project_dir) ${__local_backup_dir}/" \
+                     "${__local_rsync_post_flags}..."
+
+                 # Excecute rsync 
+                 $__rsync_bin "$__local_rsync_pre_flags" \
+                     "$(basename $__project_dir)" "${__local_backup_dir}/" \
+                     ${__local_rsync_post_flags}
+                 __retval="$?"
+            fi
+
+            if [ "$__retval" -eq 0 ]; then
+                log_this success "rsync backup of" \
+                    "$(basename $__project_dir) complete."
+            else
+                log_this error "rsync backup failed. Error code: $__retval."
+            fi
+
+            # Unpause docker compose
+            if $__docker_compose_bin \
+                --project-directory $__project_dir unpause; then
+                log_this success "Unpaused $(basename $__project_dir)"
+            else
+                log_this error "Unable to unpause $__project_dir."
+            fi
 
         else # Normal docker compose commands
 
-            dcmp_standard \
-                "$__docker_compose_bin" \
-                "$__project_dir" \
-                "$__command_args" \
+            log_this "Issuing \"$__command_args\" in $__project_dir"
+
+            if $__docker_compose_bin \
+                --project-directory $__project_dir $__command_args; then
+                log_this success "\"$__command_args\" in $__project_dir."
+            else
+                log_this error \
+                    "\"$__command_args\" in $__project_dir failed." \
+                    "Error code: $?"
+            fi
             
         fi
 
